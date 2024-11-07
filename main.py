@@ -1,97 +1,135 @@
-import random
+from pydoc_data.topics import topics
 
 
-JAPANESE_NUMBERS = {1: 'ICHI', 2: 'NI', 3: 'SAN', 4: 'SHI', 5: 'GO', 6: 'ROKU'}
-HOUSE_FEE = 40
-START_SUM = 5000
+class Book:
+
+    def __init__(self, title, author, isbn, year_published):
+        self.title = title
+        self.author = author
+        self.isbn = isbn
+        self.year_published = year_published
 
 
-class Player:
+class FictionBook(Book):
 
-    def __init__(self, cash=START_SUM):
-        self.__cash = cash
+    def __init__(self, title, author, isbn, year_published, genres):
+        super().__init__(title, author, isbn, year_published)
+        self.genres = genres
 
-    def get_cash(self):
-        return self.__cash
-
-    def bet(self, amount):
-        self.__cash -= amount
-        return amount
-
-    def gain(self, amount):
-        self.__cash += amount
+    def get_info(self):
+        return {'title': self.title, 'author': self.author, 'isbn': self.isbn, 'year_published': self.year_published,
+                'genres': self.genres}
 
 
 
-class House:
+class NonFictionBook(Book):
+
+    def __init__(self, title, author, isbn, year_published, topics):
+        super().__init__(title, author, isbn, year_published)
+        self.topics = topics
+
+    def get_info(self):
+        return {'title': self.title, 'author': self.author, 'isbn': self.isbn, 'year_published': self.year_published,
+                'topics': self.topics}
+
+
+class ReferenceBook(Book):
+
+    def __init__(self, title, author, isbn, year_published, description):
+        super().__init__(title, author, isbn, year_published)
+        self.description = description
+
+    def get_info(self):
+        return {'title': self.title, 'author': self.author, 'isbn': self.isbn, 'year_published': self.year_published,
+                'description': self.description}
+
+
+class Library:
 
     def __init__(self):
-        self.__cash = START_SUM*2
+        self.__books = []
 
-    def get_cash(self):
-        return self.__cash
+    def add_book(self, title, author, isbn, year_published, book_type, genres=None, topics=None, description=None):
+        if book_type=='fiction':
+            if type(genres)==str:
+                genres=genres.split(',')
+            elif type(genres)!=list:
+                raise ValueError('genres must be a list or str separated by comma')
+            self.__books.append(FictionBook(title, author, isbn, year_published, genres))
 
-    def gamble(self, player, amount, guess):
-        result=(random.randint(1,6), random.randint(1,6))
-        if sum(result)%2==0 and guess=='even':
-            self.__cash -= amount-HOUSE_FEE
-            player.gain((amount*2)-HOUSE_FEE)
-            return result[0], result[1], True
-        elif sum(result)%2==1 and guess=='odd':
-            self.__cash -= amount-HOUSE_FEE
-            player.gain((amount*2)-HOUSE_FEE)
-            return (result[0], result[1], True)
+        elif book_type=='nonfiction':
+            if type(topics)==str:
+                topics=topics.split(',')
+            elif type(topics)!=list:
+                raise ValueError('genres must be a list or str separated by comma')
+            self.__books.append(NonFictionBook(title, author, isbn, year_published, topics))
+
+        elif book_type=='reference':
+            if type(description)!=str:
+                raise ValueError('description must be a string')
+            self.__books.append(ReferenceBook(title, author, isbn, year_published, description))
+
+    def remove_book(self, value, criteria='auto'):
+        removed=0
+        if criteria=='auto':
+            for book in self.__books:
+                this_book = book.get_info()
+                for i in this_book.values():
+                    if value in i and type(i)==list:
+                        self.__books.remove(book)
+                        removed+=1
+                    elif value==i:
+                        self.__books.remove(book)
+                        removed+=1
+
         else:
-            return (result[0], result[1], False)
+            for book in self.__books:
+                this_book = book.get_info()
+                if criteria in this_book.keys():
+                    if value in this_book[criteria]:
+                        self.__books.remove(book)
+                        removed+=1
+        return removed
 
+    def get_books(self):
+        for book in self.__books:
+            yield book.get_info()
 
-def check_balance(player, house):
-    if player.get_cash()<41:
-        print('look who lost all his money! Remember: house always wins, come again.')
-    elif house.get_cash()<1:
-        print('wow. You actually managed to outplay the house, now you are blacklisted for your life')
+    def get_books_by_category(self, category):
+        for i in self.get_books():
+            for j in i.keys():
+                if category in i[j]:
+                    yield i
+                elif category==i[j]:
+                    yield i
 
+    def get_books_by_author(self, author):
+        for i in self.get_books():
+            if i['author'] == author:
+                yield i
+
+    def get_books_by_year(self, published_year):
+        for i in self.get_books():
+            if i['year_published'] == published_year:
+                yield i
 
 if __name__ == '__main__':
-    you=Player()
-    house=House()
-    while True:
-        print(f'You have {you.get_cash()} mon. How much do you bet? (or QUIT)')
-        while True:
-            bet=input('> ')
-            try:
-                bet=int(bet)
-            except ValueError:
-                if bet=='q':
-                    exit()
-                print('Please enter a valid number.')
-                continue
-            if bet<HOUSE_FEE+1 or bet>you.get_cash():
-                print(f'Please enter an amount bigger than {HOUSE_FEE} and lower than your balance.')
-                continue
-            break
-        print('The dealer swirls the cup and you hear the rattle of dice.')
-        print('The dealer slams the cup on the floor, still covering the dice and asks for your bet.')
-        print('CHO (even) or HAN (odd)?')
-        while True:
-            guess=input('> ')
-            if isinstance(guess, str):
-                guess=guess.lower()
-                if guess =='cho':
-                    guess='even'
-                    break
-                elif guess =='han':
-                    guess='odd'
-                    break
-                elif guess in ['even', 'odd']:
-                    break
-            else:
-                print('CHO (even) or HAN (odd)?')
-        print(f'The dealer lifts the cup to reveal:')
-        res=house.gamble(you, you.bet(bet), guess)
-        print(JAPANESE_NUMBERS[res[0]], '-', JAPANESE_NUMBERS[res[1]])
-        print(res[0], '-', res[1])
-        if res[2]:
-            print(f'You won! You take {bet} mon. The house collects a {HOUSE_FEE} mon fee.')
-        else:
-            print(f'You lost. All your bet goes to the house')
+    lib = Library()
+    try:
+        lib.add_book('451 degrees fahrenheit', 'Ray Bradbury', '156', '1953',
+                     'fiction','Novel,Science fiction,Dystopian Fiction,Political fiction')
+        lib.add_book('1984', 'George Orwell', '823', '1949', 'fiction',
+                     'Science fiction,Dystopian Fiction,Social science fiction,Political fiction')
+        lib.add_book('the code book', 'Simon Lehna Singh', '978', '1999',
+                     'nonfiction', topics='codebreaking')
+        lib.add_book('Mistborn: The Final Empire', 'Brandon Sanderson', '4533', '2006',
+                     'fiction', genres='High fantasy')
+    except ValueError:
+        print('Something went wrong')
+    for i in lib.get_books_by_year(1999):
+        print(i)
+    for i in lib.get_books_by_author('Brandon Sanderson'):
+        print(i)
+    lib.remove_book('451')
+    for i in lib.get_books_by_category('Science fiction'):
+        print(i)
