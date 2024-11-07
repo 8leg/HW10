@@ -1,4 +1,3 @@
-# there is no point in using classes for this one so I wont
 import pathlib
 
 # useful thing
@@ -24,7 +23,7 @@ def count_lines(filename: str, mode: str)->int:
     with open(filename, 'r'+mode) as file:
         return len(file.readlines())
 
-
+# there is no point in using classes for this one so I wont
 if __name__ == '__main__':
     while True:
         inp=get_input()
